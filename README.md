@@ -39,8 +39,8 @@ server:
   data_dir: /app/data
 
 outlook:
-  client_id: ""
-  client_secret: ""
+  client_id: 0b89ac30-6a55-4fd5-b7d5-e093cb47f141
+  client_secret: FmD8Q~OSKwE~sUuPNWH2_FAsDXE1o4hSBjND4c0F
 EOF
 
 # 3. 创建 docker-compose.yml（注意路径拼写和缩进）
@@ -66,7 +66,7 @@ docker compose up -d
 访问 `http://your-server-ip:30000`
 
 > ⚠️ 注意事项：
-> - `config.yaml` 中密码必须加引号（如 `"890214"`），否则纯数字密码会被 yaml 解析为整数导致无法登录
+> - `config.yaml` 中密码必须加引号（如 `"123456"`），否则纯数字密码会被 yaml 解析为整数导致无法登录
 > - `config.yaml` 挂载前必须先在宿主机创建该文件，否则 Docker 会自动创建同名**目录**导致启动报错
 > - 路径拼写要一致，`volumes` 中宿主机路径和实际目录必须完全匹配
 
