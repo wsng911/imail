@@ -26,16 +26,38 @@ by mrlees
 
 ```bash
 # 1. 创建目录
-mkdir iMail && cd iMail
-mkdir data
+mkdir -p /home/iMail/data && cd /home/iMail
 
-# 2. 下载配置文件
-curl -O https://raw.githubusercontent.com/wsng911/imail/main/config.example.yaml
-cp config.example.yaml config.yaml
-# 编辑 config.yaml 填入账号密码
+# 2. 创建 config.yaml（密码必须加引号，否则纯数字会被解析为整数导致登录失败）
+cat > config.yaml << 'EOF'
+app:
+  username: admin
+  password: "yourpassword"
 
-# 3. 下载 docker-compose.yml
-curl -O https://raw.githubusercontent.com/wsng911/imail/main/docker-compose.yml
+server:
+  port: 3000
+  data_dir: /app/data
+
+outlook:
+  client_id: ""
+  client_secret: ""
+EOF
+
+# 3. 创建 docker-compose.yml（注意路径拼写和缩进）
+cat > docker-compose.yml << 'EOF'
+services:
+  imall:
+    image: wsng911/imail:latest
+    container_name: iMail
+    restart: unless-stopped
+    ports:
+      - "30000:3000"
+    volumes:
+      - /home/iMail/data:/app/data
+      - /home/iMail/config.yaml:/app/config.yaml:ro
+    environment:
+      - DATA_DIR=/app/data
+EOF
 
 # 4. 启动
 docker compose up -d
@@ -43,12 +65,17 @@ docker compose up -d
 
 访问 `http://your-server-ip:30000`
 
+> ⚠️ 注意事项：
+> - `config.yaml` 中密码必须加引号（如 `"890214"`），否则纯数字密码会被 yaml 解析为整数导致无法登录
+> - `config.yaml` 挂载前必须先在宿主机创建该文件，否则 Docker 会自动创建同名**目录**导致启动报错
+> - 路径拼写要一致，`volumes` 中宿主机路径和实际目录必须完全匹配
+
 ---
 
 ### 方式二：源码构建
 
 ```bash
-git clone <repo> iMail && cd iMail
+git clone https://github.com/wsng911/imail.git iMail && cd iMail
 ```
 
 ### 2. 配置
