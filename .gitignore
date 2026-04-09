@@ -1,0 +1,16 @@
+node_modules/
+data/
+temp/
+*.db
+*.db.imported
+msal_*.json
+.DS_Store
+**/.DS_Store
+dist/
+config.yaml
+*.log
+sessions/
+logo/
+frontend/src/assets/
+export.sh
+backend/.env
