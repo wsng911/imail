@@ -13,6 +13,8 @@ COPY backend/package*.json ./
 RUN npm ci --omit=dev --prefer-offline || npm ci --omit=dev
 COPY backend/src ./src
 COPY --from=frontend-builder /frontend/dist ./public
+# 内置默认配置，宿主机挂载会覆盖此文件
+COPY config.example.yaml ./config.yaml
 ENV NODE_ENV=production
 EXPOSE 3000
 CMD ["node", "src/index.js"]
