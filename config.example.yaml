@@ -1,0 +1,13 @@
+app:
+  username: admin
+  password: "admin"   # 纯数字密码必须加引号，如 "123456"
+
+server:
+  port: 3000
+  data_dir: /app/data
+
+outlook:
+  client_id: ""
+  client_secret: ""
+  # 可选：OAuth 中转服务地址（多用户部署时使用）
+  # relay_url: "https://your-relay-domain.com/oauth/callback"
