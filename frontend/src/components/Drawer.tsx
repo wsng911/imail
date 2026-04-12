@@ -64,7 +64,7 @@ interface Props {
 
 export default function Drawer({ accounts, selectedAccountId, onSelectAccount, onAddAccount, onSettings, onSync, onClose, syncing, invalidAccounts, onCheckStatus }: Props) {
   const { accountId: selAccountId } = parseFolderId(selectedAccountId)
-  const [stats, setStats] = useState<{total:number,unread:number,starred:number,listOnly:number,withBody:number}|null>(null)
+  const [stats, setStats] = useState<{total:number,unread:number,starred:number,listOnly:number,withBody:number,oldestDate:number|null,cutoffDate:number}|null>(null)
   const fetchStats = () => fetch('/api/emails/stats', { credentials: 'include' }).then(r => r.json()).then(setStats).catch(() => {})
   useEffect(() => {
     fetchStats()
@@ -242,8 +242,15 @@ export default function Drawer({ accounts, selectedAccountId, onSelectAccount, o
                   <div className="grid grid-cols-2 gap-x-2 gap-y-0.5 text-gray-500">
                     <span>未读 <span className="text-blue-500 font-medium">{stats.unread}</span></span>
                     <span>星标 <span className="text-yellow-500 font-medium">{stats.starred}</span></span>
-                    <span>含正文 <span className="text-green-600 font-medium">{stats.withBody}</span></span>
-                    <span>仅列表 <span className="text-gray-400 font-medium">{stats.listOnly}</span></span>
+                    {(() => {
+                      const fmt = (ts: number) => { const d = new Date(ts); return `${String(d.getFullYear()).slice(2)}${String(d.getMonth()+1).padStart(2,'0')}` }
+                      const cutoff = fmt(stats.cutoffDate)
+                      const oldest = stats.oldestDate ? fmt(stats.oldestDate) : '?'
+                      return (<>
+                        <span title="已下载完整正文，可离线阅读">含正文 <span className="text-green-600 font-medium">{stats.withBody}</span> <span className="text-gray-300">({cutoff}~今)</span></span>
+                        <span title="仅标题和预览，正文需联网拉取">仅预览 <span className="text-gray-400 font-medium">{stats.listOnly}</span> <span className="text-gray-300">({oldest}~{cutoff})</span></span>
+                      </>)
+                    })()}
                   </div>
                 </div>
               )}
@@ -252,7 +259,9 @@ export default function Drawer({ accounts, selectedAccountId, onSelectAccount, o
                 <span>
                   <span className="text-green-600 font-medium">{total - invalidAccounts.length}</span>
                   <span className="text-gray-400">/{total}</span>
-                  {invalidAccounts.length > 0 && <span className="text-red-400 ml-1">({invalidAccounts.length}失效)</span>}
+                  {invalidAccounts.length > 0
+                    ? <span className="text-red-400 ml-1">({invalidAccounts.length}失效)</span>
+                    : <span className="text-gray-300 ml-1">全部正常</span>}
                 </span>
               </div>
               {sortedInvalid.length > 0 && (

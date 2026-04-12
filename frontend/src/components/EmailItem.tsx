@@ -10,10 +10,9 @@ function formatDate(raw: string): string {
   if (isNaN(d.getTime())) return raw
   const now = new Date()
   const isToday = d.toDateString() === now.toDateString()
-  const isThisYear = d.getFullYear() === now.getFullYear()
   if (isToday) return d.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })
-  if (isThisYear) return d.toLocaleDateString('zh-CN', { month: '2-digit', day: '2-digit' }) + ' ' + d.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })
-  return d.toLocaleDateString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit' })
+  const y = d.getFullYear(), m = String(d.getMonth()+1).padStart(2,'0'), day = String(d.getDate()).padStart(2,'0')
+  return `${y}${m}${day}`
 }
 
 interface Props {

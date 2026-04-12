@@ -81,7 +81,9 @@ router.get('/stats', (req, res) => {
   const unread = db.prepare('SELECT COUNT(*) as n FROM emails WHERE deleted=0 AND read=0').get().n
   const starred = db.prepare('SELECT COUNT(*) as n FROM emails WHERE deleted=0 AND starred=1').get().n
   const noBody = db.prepare("SELECT COUNT(*) as n FROM emails WHERE deleted=0 AND (body='' OR body IS NULL)").get().n
-  res.json({ total, unread, starred, listOnly: noBody, withBody: total - noBody })
+  const oldest = db.prepare('SELECT MIN(raw_date) as d FROM emails WHERE deleted=0').get()?.d || null
+  const threeMonthsAgo = Date.now() - 90 * 24 * 60 * 60 * 1000
+  res.json({ total, unread, starred, listOnly: noBody, withBody: total - noBody, oldestDate: oldest, cutoffDate: threeMonthsAgo })
 })
 
 // GET /api/emails/:id

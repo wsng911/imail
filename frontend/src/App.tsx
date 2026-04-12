@@ -264,8 +264,7 @@ export default function App() {
               setEmails(prev => {
                 const existingIds = new Set(prev.map(e => e.id))
                 const fresh = data.map(mapEmail).filter(e => !existingIds.has(e.id))
-                const stillUnread = prev.filter(e => data.some((d: any) => d.id === e.id))
-                return fresh.length > 0 ? [...fresh, ...stillUnread] : stillUnread
+                return fresh.length > 0 ? [...fresh, ...prev] : prev
               })
             })
           return 5
@@ -490,7 +489,8 @@ export default function App() {
             {selectMode ? `已选 ${selectedIds.size} 封` : listTitle}
             {!selectMode && selectedAccountId === VIRTUAL_UNREAD && (() => {
               const TOTAL = 5, r = 7, c = 2 * Math.PI * r
-              const offset = c * (unreadCountdown / TOTAL)
+              // offset=0 满圆，offset=c 空圆；倒计时从5到1，圆弧逐渐消耗
+              const offset = c * (1 - unreadCountdown / TOTAL)
               return (
                 <svg width="18" height="18" className="-rotate-90 flex-shrink-0">
                   <circle cx="9" cy="9" r={r} fill="none" stroke="#e5e7eb" strokeWidth="2" />
