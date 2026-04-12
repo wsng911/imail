@@ -113,7 +113,7 @@ export default function Drawer({ accounts, selectedAccountId, onSelectAccount, o
             : view.level === 'accounts' ? TYPE_LABELS[view.type]
             : shortEmail(view.account.email)}
         </span>
-        {view.level === 'root' && <span className="text-[0.7em] text-gray-300">v5.1.10</span>}
+        {view.level === 'root' && <span className="text-[0.7em] text-gray-300">v5.2.0</span>}
       </div>
 
       <div className="flex-1 overflow-y-auto">
