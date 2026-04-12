@@ -22,7 +22,7 @@ function sortAccounts(accounts: Account[]): Account[] {
 function mapEmail(r: any): Email {
   return {
     id: r.id || r.uid, accountId: r.account_id, from: r.from_addr, fromName: r.from_name,
-    to: '', subject: r.subject, preview: r.preview, body: r.body ?? '',
+    to: r.to_addr || '', subject: r.subject, preview: r.preview, body: r.body ?? '',
     date: r.date, rawDate: r.raw_date ?? 0, read: r.read === 1, starred: r.starred === 1, folder: r.folder,
     hasAttachment: r.has_attachment === 1,
   }
@@ -246,7 +246,25 @@ export default function App() {
     setSelectedEmail(null)
     setMobileView('list')
     setNoMoreOlder(false)
+    setEmails([])  // 立刻清空，避免显示旧列表
     fetchEmails(selectedAccountId, 1)
+  }, [selectedAccountId])
+  // 未读视图 5 秒自动刷新（merge 方式，不覆盖列表）
+  useEffect(() => {
+    if (selectedAccountId !== VIRTUAL_UNREAD) return
+    const t = setInterval(async () => {
+      const res = await fetch('/api/emails?page=1&folder=unread', { credentials: 'include' })
+      const data = await res.json()
+      if (!Array.isArray(data)) return
+      setEmails(prev => {
+        const existingIds = new Set(prev.map(e => e.id))
+        const fresh = data.map(mapEmail).filter(e => !existingIds.has(e.id))
+        // 同时移除已被标为已读的邮件
+        const stillUnread = prev.filter(e => data.some((d: any) => d.id === e.id))
+        return fresh.length > 0 ? [...fresh, ...stillUnread] : stillUnread
+      })
+    }, 5000)
+    return () => clearInterval(t)
   }, [selectedAccountId])
   useEffect(() => { localStorage.setItem(LS.SELECTED_ACCOUNT, selectedAccountId ?? ALL_INBOXES) }, [selectedAccountId])
   useEffect(() => {
@@ -328,34 +346,27 @@ export default function App() {
     if (!targets.length) return
     setSyncing(true)
     try {
-      await Promise.all(targets.map(a => fetch(`/api/emails/sync/${a.id}`, { method: 'POST', credentials: 'include' })))
-      const res = await fetch(`/api/emails?${(() => { const { accountId: ai, folder } = parseFolderId(selectedAccountId); const p = new URLSearchParams({ page: '1', folder }); if (ai && ai !== ALL_INBOXES && ai !== VIRTUAL_UNREAD && ai !== VIRTUAL_STARRED) p.set('accountId', ai); return p })()}`, { credentials: 'include' })
-      const newData = await res.json()
-      if (Array.isArray(newData) && newData.length > 0) {
-        setEmails(prev => {
-          const existingIds = new Set(prev.map(e => e.id))
-          const fresh = newData.map(mapEmail).filter(e => !existingIds.has(e.id))
-          return fresh.length > 0 ? [...fresh, ...prev] : prev
-        })
+      const refreshList = async () => {
+        const res = await fetch(`/api/emails?${(() => { const { accountId: ai, folder } = parseFolderId(selectedAccountId); const p = new URLSearchParams({ page: '1', folder }); if (ai && ai !== ALL_INBOXES && ai !== VIRTUAL_UNREAD && ai !== VIRTUAL_STARRED) p.set('accountId', ai); return p })()}`, { credentials: 'include' })
+        const newData = await res.json()
+        if (Array.isArray(newData) && newData.length > 0) {
+          setEmails(prev => {
+            const existingIds = new Set(prev.map(e => e.id))
+            const fresh = newData.map(mapEmail).filter(e => !existingIds.has(e.id))
+            return fresh.length > 0 ? [...fresh, ...prev] : prev
+          })
+        }
       }
+      await Promise.all(targets.map(a =>
+        fetch(`/api/emails/sync/${a.id}`, { method: 'POST', credentials: 'include' })
+          .then(() => refreshList())
+      ))
     } finally { setSyncing(false) }
   }
 
   async function handleSync() {
     setSyncing(true)
-    try {
-      const results = await Promise.all(accounts.map(a =>
-        fetch(`/api/emails/sync/${a.id}`, { method: 'POST', credentials: 'include' })
-          .then(r => r.json().then(d => ({ ...d, email: a.email })))
-      ))
-      const expired = results.filter(r => r.error === 'token_expired')
-      const failed = results.filter(r => r.error === 'sync_failed')
-      const msgs = [
-        expired.length ? `授权已过期：${expired.map(r => r.email).join('、')}` : '',
-        failed.length ? `同步失败：${failed.map(r => r.email).join('、')}` : '',
-      ].filter(Boolean)
-      if (msgs.length) setToast(msgs.join(' | '))
-      // 只拉第1页新邮件，插入到列表顶部，不重置整个列表
+    const refreshList = async () => {
       const res = await fetch(`/api/emails?${(() => { const { accountId: accId, folder } = parseFolderId(selectedAccountId); const p = new URLSearchParams({ page: '1', folder }); if (accId && accId !== ALL_INBOXES && accId !== VIRTUAL_UNREAD && accId !== VIRTUAL_STARRED) p.set('accountId', accId); return p })()}`, { credentials: 'include' })
       const newData = await res.json()
       if (Array.isArray(newData) && newData.length > 0) {
@@ -365,6 +376,23 @@ export default function App() {
           return fresh.length > 0 ? [...fresh, ...prev] : prev
         })
       }
+    }
+    try {
+      const expired: string[] = [], failed: string[] = []
+      await Promise.all(accounts.map(a =>
+        fetch(`/api/emails/sync/${a.id}`, { method: 'POST', credentials: 'include' })
+          .then(r => r.json())
+          .then(d => {
+            if (d.error === 'token_expired') expired.push(a.email)
+            else if (d.error === 'sync_failed') failed.push(a.email)
+            refreshList()  // 每个账号完成立刻刷新
+          })
+      ))
+      const msgs = [
+        expired.length ? `授权已过期：${expired.join('、')}` : '',
+        failed.length ? `同步失败：${failed.join('、')}` : '',
+      ].filter(Boolean)
+      if (msgs.length) setToast(msgs.join(' | '))
     } finally {
       setSyncing(false)
     }

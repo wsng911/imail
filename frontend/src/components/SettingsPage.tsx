@@ -7,7 +7,9 @@ function AccLogo({ type, email }: { type: string; email: string }) {
   const domain = email.toLowerCase().split('@')[1] || ''
   const isHotmail = domain.startsWith('hotmail.')
   const isLive = domain.startsWith('live.')
-  const src = isLive ? '/live.png' : isHotmail ? '/hotmail.png'
+  const isOnMicrosoft = domain.endsWith('onmicrosoft.com')
+  const src = isOnMicrosoft ? '/onmicrosoft.png'
+    : isLive ? '/live.png' : isHotmail ? '/hotmail.png'
     : type === 'gmail' ? '/gmail.png' : type === 'outlook' ? '/outlook.png'
     : type === 'qq' ? '/qq.png' : null
   if (!src) return <div className="w-5 h-5 rounded bg-gray-200 flex-shrink-0" />

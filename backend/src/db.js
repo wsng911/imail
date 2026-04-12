@@ -29,6 +29,7 @@ db.exec(`
     folder TEXT DEFAULT 'inbox',
     from_addr TEXT,
     from_name TEXT,
+    to_addr TEXT,
     subject TEXT,
     preview TEXT,
     body TEXT,
@@ -93,6 +94,9 @@ if (!folderMigrated) {
   if (folderFix > 0) console.log(`[db] 修复 ${folderFix} 封邮件的 folder 字段`)
   db.prepare("INSERT OR REPLACE INTO settings (key, value) VALUES ('migration_folder_fixed', '1')").run()
 }
+
+// 3. 加 to_addr 字段
+try { db.prepare('ALTER TABLE emails ADD COLUMN to_addr TEXT').run() } catch {}
 
 // Auto-import accounts.db if present (migration helper)
 const importPath = path.join(DATA_DIR, 'accounts.db')

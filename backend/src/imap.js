@@ -86,7 +86,7 @@ function fetchFolder(imap, account, imapFolder, folderKey) {
       console.log(`[fetchFolder] ${folderKey} new:${newRows.length} old:${oldRows.length}`)
       if (newRows.length === 0 && oldRows.length === 0) return resolve(0)
 
-      const insertEmail = db.prepare(`INSERT OR IGNORE INTO emails (id, account_id, uid, folder, from_addr, from_name, subject, preview, body, date, raw_date, read) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+      const insertEmail = db.prepare(`INSERT OR IGNORE INTO emails (id, account_id, uid, folder, from_addr, from_name, to_addr, subject, preview, body, date, raw_date, read) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
       const insertAtt = db.prepare('INSERT INTO attachments (id, email_id, filename, content_type, size) VALUES (?, ?, ?, ?, ?)')
       db.transaction(() => {
         for (const { uid, parsed: hp, internalDate: id1 } of oldRows) {
@@ -94,6 +94,7 @@ function fetchFolder(imap, account, imapFolder, folderKey) {
           const emailDate = d ? new Date(d).getTime() : Date.now()
           insertEmail.run(randomUUID(), account.id, uid, folderKey,
             hp.from?.value?.[0]?.address || '', hp.from?.value?.[0]?.name || '',
+            hp.to?.value?.[0]?.address || '',
             hp.subject || '(无主题)', '', '', d ? new Date(d).toISOString() : new Date().toISOString(), emailDate, 1)
         }
         for (const { uid, flags, parsed: fp, internalDate: id2 } of newRows) {
@@ -102,6 +103,7 @@ function fetchFolder(imap, account, imapFolder, folderKey) {
           const emailId = randomUUID()
           insertEmail.run(emailId, account.id, uid, folderKey,
             fp.from?.value?.[0]?.address || '', fp.from?.value?.[0]?.name || '',
+            fp.to?.value?.[0]?.address || '',
             fp.subject || '(无主题)', (fp.text || '').slice(0, 100).replace(/\n/g, ' '),
             fp.html || fp.text || '', d ? new Date(d).toISOString() : new Date().toISOString(), emailDate,
             flags.includes('\\Seen') ? 1 : 0)

@@ -61,16 +61,16 @@ router.get('/', (req, res) => {
   let rows
   if (folder === 'unread') {
     rows = accountId
-      ? db.prepare(`SELECT id, account_id, from_addr, from_name, subject, preview, date, raw_date, read, starred, folder, ${attSub} FROM emails WHERE account_id = ? AND read = 0 AND deleted = 0 ORDER BY raw_date DESC LIMIT ? OFFSET ?`).all(accountId, limit, offset)
-      : db.prepare(`SELECT id, account_id, from_addr, from_name, subject, preview, date, raw_date, read, starred, folder, ${attSub} FROM emails WHERE read = 0 AND deleted = 0 ORDER BY raw_date DESC LIMIT ? OFFSET ?`).all(limit, offset)
+      ? db.prepare(`SELECT id, account_id, from_addr, from_name, to_addr, subject, preview, date, raw_date, read, starred, folder, ${attSub} FROM emails WHERE account_id = ? AND read = 0 AND deleted = 0 ORDER BY raw_date DESC LIMIT ? OFFSET ?`).all(accountId, limit, offset)
+      : db.prepare(`SELECT id, account_id, from_addr, from_name, to_addr, subject, preview, date, raw_date, read, starred, folder, ${attSub} FROM emails WHERE read = 0 AND deleted = 0 ORDER BY raw_date DESC LIMIT ? OFFSET ?`).all(limit, offset)
   } else if (folder === 'starred') {
     rows = accountId
-      ? db.prepare(`SELECT id, account_id, from_addr, from_name, subject, preview, date, raw_date, read, starred, folder, ${attSub} FROM emails WHERE account_id = ? AND starred = 1 AND deleted = 0 ORDER BY raw_date DESC LIMIT ? OFFSET ?`).all(accountId, limit, offset)
-      : db.prepare(`SELECT id, account_id, from_addr, from_name, subject, preview, date, raw_date, read, starred, folder, ${attSub} FROM emails WHERE starred = 1 AND deleted = 0 ORDER BY raw_date DESC LIMIT ? OFFSET ?`).all(limit, offset)
+      ? db.prepare(`SELECT id, account_id, from_addr, from_name, to_addr, subject, preview, date, raw_date, read, starred, folder, ${attSub} FROM emails WHERE account_id = ? AND starred = 1 AND deleted = 0 ORDER BY raw_date DESC LIMIT ? OFFSET ?`).all(accountId, limit, offset)
+      : db.prepare(`SELECT id, account_id, from_addr, from_name, to_addr, subject, preview, date, raw_date, read, starred, folder, ${attSub} FROM emails WHERE starred = 1 AND deleted = 0 ORDER BY raw_date DESC LIMIT ? OFFSET ?`).all(limit, offset)
   } else if (accountId) {
-    rows = db.prepare(`SELECT id, account_id, from_addr, from_name, subject, preview, date, raw_date, read, starred, folder, ${attSub} FROM emails WHERE account_id = ? AND folder = ? AND deleted = 0 ORDER BY raw_date DESC LIMIT ? OFFSET ?`).all(accountId, folder, limit, offset)
+    rows = db.prepare(`SELECT id, account_id, from_addr, from_name, to_addr, subject, preview, date, raw_date, read, starred, folder, ${attSub} FROM emails WHERE account_id = ? AND folder = ? AND deleted = 0 ORDER BY raw_date DESC LIMIT ? OFFSET ?`).all(accountId, folder, limit, offset)
   } else {
-    rows = db.prepare(`SELECT id, account_id, from_addr, from_name, subject, preview, date, raw_date, read, starred, folder, ${attSub} FROM emails WHERE folder = ? AND deleted = 0 ORDER BY raw_date DESC LIMIT ? OFFSET ?`).all(folder, limit, offset)
+    rows = db.prepare(`SELECT id, account_id, from_addr, from_name, to_addr, subject, preview, date, raw_date, read, starred, folder, ${attSub} FROM emails WHERE folder = ? AND deleted = 0 ORDER BY raw_date DESC LIMIT ? OFFSET ?`).all(folder, limit, offset)
   }
   res.json(rows)
 })
@@ -225,7 +225,7 @@ router.post('/sync/:accountId', async (req, res) => {
     let count = 0
     const threeMonthsAgo = Date.now() - 90 * 24 * 60 * 60 * 1000
     for (const [folderKey, folderId] of Object.entries(OUTLOOK_FOLDERS)) {
-      let url = `https://graph.microsoft.com/v1.0/me/mailFolders/${folderId}/messages?$top=999&$orderby=receivedDateTime desc&$select=id,subject,from,bodyPreview,body,receivedDateTime,isRead,hasAttachments`
+      let url = `https://graph.microsoft.com/v1.0/me/mailFolders/${folderId}/messages?$top=999&$orderby=receivedDateTime desc&$select=id,subject,from,toRecipients,bodyPreview,body,receivedDateTime,isRead,hasAttachments`
       let pageCount = 0
       while (url && pageCount < 20) {
         pageCount++
@@ -240,11 +240,12 @@ router.post('/sync/:accountId', async (req, res) => {
             const isOld = emailDate < threeMonthsAgo
             const body = isOld ? '' : (msg.body?.content || '')
             const read = isOld ? 1 : (msg.isRead ? 1 : 0)
-            db.prepare(`INSERT INTO emails (id, account_id, uid, folder, from_addr, from_name, subject, preview, body, date, read, raw_date)
-              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+            db.prepare(`INSERT INTO emails (id, account_id, uid, folder, from_addr, from_name, to_addr, subject, preview, body, date, read, raw_date)
+              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
               .run(emailId, account.id, msg.id, folderKey,
                 msg.from?.emailAddress?.address || '',
                 msg.from?.emailAddress?.name || '',
+                msg.toRecipients?.[0]?.emailAddress?.address || '',
                 msg.subject || '(无主题)',
                 (msg.bodyPreview || '').slice(0, 100),
                 body,

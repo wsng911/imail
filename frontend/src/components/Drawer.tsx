@@ -30,8 +30,10 @@ function ProviderLogo({ type, email, size = 6 }: { type: string, email?: string,
   const domain = email?.toLowerCase().split('@')[1] || ''
   const isHotmail = domain.startsWith('hotmail.')
   const isLive = domain.startsWith('live.')
+  const isOnMicrosoft = domain.endsWith('onmicrosoft.com')
 
-  const src = isLive ? '/live.png'
+  const src = isOnMicrosoft ? '/onmicrosoft.png'
+    : isLive ? '/live.png'
     : isHotmail ? '/hotmail.png'
     : type === 'gmail' ? '/gmail.png'
     : type === 'outlook' ? '/outlook.png'

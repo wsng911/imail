@@ -221,7 +221,7 @@ async function autoSync() {
         const threeMonthsAgo = Date.now() - 90 * 24 * 60 * 60 * 1000
         let newCount = 0
         for (const [folderKey, folderId] of Object.entries(OUTLOOK_FOLDERS)) {
-          let url = `https://graph.microsoft.com/v1.0/me/mailFolders/${folderId}/messages?$top=50&$orderby=receivedDateTime desc&$select=id,subject,from,bodyPreview,body,receivedDateTime,isRead,hasAttachments`
+          let url = `https://graph.microsoft.com/v1.0/me/mailFolders/${folderId}/messages?$top=50&$orderby=receivedDateTime desc&$select=id,subject,from,toRecipients,bodyPreview,body,receivedDateTime,isRead,hasAttachments`
           const resp = await nodeFetch(url, { headers: { Authorization: `Bearer ${token}` } })
           const data = await resp.json()
           if (data.error) { console.log(`[sync] ${account.email} graph error:`, data.error.message); continue }
@@ -231,9 +231,10 @@ async function autoSync() {
             if (!existing && !purged) {
               const emailDate = msg.receivedDateTime ? new Date(msg.receivedDateTime).getTime() : Date.now()
               const isOld = emailDate < threeMonthsAgo
-              db.prepare(`INSERT OR IGNORE INTO emails (id,account_id,uid,folder,from_addr,from_name,subject,preview,body,date,read,raw_date) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`)
+              db.prepare(`INSERT OR IGNORE INTO emails (id,account_id,uid,folder,from_addr,from_name,to_addr,subject,preview,body,date,read,raw_date) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`)
                 .run(randomUUID(), account.id, msg.id, folderKey,
                   msg.from?.emailAddress?.address || '', msg.from?.emailAddress?.name || '',
+                  msg.toRecipients?.[0]?.emailAddress?.address || '',
                   msg.subject || '(无主题)', (msg.bodyPreview || '').slice(0, 100),
                   isOld ? '' : (msg.body?.content || ''), msg.receivedDateTime || new Date().toISOString(),
                   isOld ? 1 : (msg.isRead ? 1 : 0), emailDate)

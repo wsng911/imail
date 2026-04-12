@@ -117,6 +117,15 @@ export default function EmailDetail({ email, account, onBack, onDelete, onStar, 
               <div className="text-xs text-gray-400 truncate">{email.from}</div>
             )}
             <div className="text-xs text-gray-400">到 我</div>
+            {email.to && (() => {
+              const local = email.to.split('@')[0] || ''
+              const isAlias = local.includes('+')
+              return (
+                <div className={`text-xs truncate ${isAlias ? 'text-blue-500 font-medium' : 'text-gray-400'}`}>
+                  {email.to}
+                </div>
+              )
+            })()}
           </div>
           <span className="text-xs text-blue-500 flex-shrink-0">{(() => { const d = new Date(email.date); return isNaN(d.getTime()) ? email.date : d.toLocaleString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) })()}</span>
         </div>
