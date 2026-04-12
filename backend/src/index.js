@@ -210,13 +210,15 @@ async function autoSync() {
   const nodeFetch = (await import('node-fetch')).default
   const { randomUUID } = require('crypto')
   const accounts = accountsDb.prepare('SELECT * FROM accounts').all()
-  for (const account of accounts) {
+
+  const syncOne = async (account) => {
     try {
       const config = JSON.parse(account.config)
       if (account.type === 'outlook') {
         let token
-        try { token = await getAccessToken(account.id) } catch (e) { console.log(`[sync] ${account.email} token error:`, e.message); continue }
+        try { token = await getAccessToken(account.id) } catch (e) { console.log(`[sync] ${account.email} token error:`, e.message); return }
         const db = require('./db')
+        // inbox 优先
         const OUTLOOK_FOLDERS = { inbox: 'inbox', sent: 'sentitems', trash: 'deleteditems', spam: 'junkemail' }
         const threeMonthsAgo = Date.now() - 90 * 24 * 60 * 60 * 1000
         let newCount = 0
@@ -244,9 +246,13 @@ async function autoSync() {
         }
         console.log(`[sync] ${account.email} synced ${newCount}`)
         await fetchEmails(account, config)
+      } else {
+        await fetchEmails(account, config)
       }
     } catch {}
   }
+
+  await Promise.all(accounts.map(syncOne))
 }
 
 app.listen(PORT, () => {
