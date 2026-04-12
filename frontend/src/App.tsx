@@ -73,7 +73,6 @@ export default function App() {
   const [syncing, setSyncing] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
   const [markingAll, setMarkingAll] = useState(false)
-  const [unreadCountdown, setUnreadCountdown] = useState(5)
   const [invalidAccounts, setInvalidAccounts] = useState<{ id: string; email: string }[]>(() => {
     try { return JSON.parse(localStorage.getItem('imail_invalid_accounts') || '[]') } catch { return [] }
   })
@@ -251,28 +250,20 @@ export default function App() {
     setEmails([])  // 立刻清空，避免显示旧列表
     fetchEmails(selectedAccountId, 1)
   }, [selectedAccountId])
-  // 未读视图 5 秒自动刷新（merge 方式，不覆盖列表）
+  // 未读视图 5 秒自动刷新
   useEffect(() => {
     if (selectedAccountId !== VIRTUAL_UNREAD) return
-    setUnreadCountdown(5)
-    const tick = setInterval(async () => {
-      setUnreadCountdown(prev => {
-        if (prev <= 1) {
-          // 触发刷新
-          fetch('/api/emails?page=1&folder=unread', { credentials: 'include' })
-            .then(r => r.json()).then(data => {
-              if (!Array.isArray(data)) return
-              setEmails(prev => {
-                const existingIds = new Set(prev.map(e => e.id))
-                const fresh = data.map(mapEmail).filter(e => !existingIds.has(e.id))
-                return fresh.length > 0 ? [...fresh, ...prev] : prev
-              })
-            })
-          return 5
-        }
-        return prev - 1
-      })
-    }, 1000)
+    const tick = setInterval(() => {
+      fetch('/api/emails?page=1&folder=unread', { credentials: 'include' })
+        .then(r => r.json()).then(data => {
+          if (!Array.isArray(data)) return
+          setEmails(prev => {
+            const existingIds = new Set(prev.map(e => e.id))
+            const fresh = data.map(mapEmail).filter(e => !existingIds.has(e.id))
+            return fresh.length > 0 ? [...fresh, ...prev] : prev
+          })
+        })
+    }, 5000)
     return () => clearInterval(tick)
   }, [selectedAccountId])
   useEffect(() => { localStorage.setItem(LS.SELECTED_ACCOUNT, selectedAccountId ?? ALL_INBOXES) }, [selectedAccountId])
