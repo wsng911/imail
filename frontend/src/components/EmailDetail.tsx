@@ -37,18 +37,22 @@ export default function EmailDetail({ email, account, onBack, onDelete, onStar, 
 
   const [bodyContent, setBodyContent] = useState(email.body || '')
   const [loadingBody, setLoadingBody] = useState(false)
+  const [fetchError, setFetchError] = useState(false)
+
+  const fetchBody = () => {
+    setLoadingBody(true)
+    setFetchError(false)
+    fetch(`/api/emails/${email.id}/body`, { credentials: 'include' })
+      .then(r => r.json())
+      .then(d => { if (d.body) setBodyContent(d.body); else setFetchError(true) })
+      .catch(() => setFetchError(true))
+      .finally(() => setLoadingBody(false))
+  }
 
   useEffect(() => {
     setBodyContent(email.body || '')
-    // body 为空时自动从服务器拉取
-    if (!email.body) {
-      setLoadingBody(true)
-      fetch(`/api/emails/${email.id}/body`, { credentials: 'include' })
-        .then(r => r.json())
-        .then(d => { if (d.body) setBodyContent(d.body) })
-        .catch(() => {})
-        .finally(() => setLoadingBody(false))
-    }
+    setFetchError(false)
+    if (!email.body) fetchBody()
   }, [email.id, email.body])
 
   useEffect(() => {
@@ -132,6 +136,11 @@ export default function EmailDetail({ email, account, onBack, onDelete, onStar, 
 
         {loadingBody ? (
           <div className="flex items-center justify-center py-10 text-gray-400 text-sm">加载中...</div>
+        ) : fetchError ? (
+          <div className="flex flex-col items-center justify-center py-10 gap-3">
+            <div className="text-gray-400 text-sm">正文加载失败</div>
+            <button onClick={fetchBody} className="text-xs text-blue-500 border border-blue-200 rounded px-3 py-1 hover:bg-blue-50">重新加载</button>
+          </div>
         ) : bodyContent && /<[a-z][\s\S]*>/i.test(bodyContent) ? (
           <iframe
             ref={iframeRef}

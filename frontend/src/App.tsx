@@ -3,6 +3,7 @@ import { Menu, Edit, Mail, MailOpen, Trash2, ListFilter, Search, CheckSquare, Sq
 import type { Account, Email, AccountType } from './types'
 import EmailItem from './components/EmailItem'
 import EmailDetail from './components/EmailDetail'
+import SpinnerDots from './components/SpinnerDots'
 import ComposePanel, { type ComposeData } from './components/ComposePanel'
 import Drawer, { ALL_INBOXES, VIRTUAL_UNREAD, VIRTUAL_STARRED, parseFolderId } from './components/Drawer'
 import AddAccountModal from './components/AddAccountModal'
@@ -487,19 +488,9 @@ export default function App() {
         <div className="flex-1 min-w-0 cursor-pointer" onClick={() => handleSyncCurrent()}>
           <div className="text-sm font-semibold text-gray-900 truncate flex items-center gap-1.5">
             {selectMode ? `已选 ${selectedIds.size} 封` : listTitle}
-            {!selectMode && selectedAccountId === VIRTUAL_UNREAD && (() => {
-              const TOTAL = 5, r = 7, c = 2 * Math.PI * r
-              // offset=0 满圆，offset=c 空圆；倒计时从5到1，圆弧逐渐消耗
-              const offset = c * (1 - unreadCountdown / TOTAL)
-              return (
-                <svg width="18" height="18" className="-rotate-90 flex-shrink-0">
-                  <circle cx="9" cy="9" r={r} fill="none" stroke="#e5e7eb" strokeWidth="2" />
-                  <circle cx="9" cy="9" r={r} fill="none" stroke="#3b82f6" strokeWidth="2"
-                    strokeDasharray={c} strokeDashoffset={offset}
-                    style={{ transition: 'stroke-dashoffset 1s linear' }} />
-                </svg>
-              )
-            })()}
+            {!selectMode && selectedAccountId === VIRTUAL_UNREAD && (
+              <SpinnerDots duration={5} />
+            )}
           </div>
           {!selectMode && listSubtitle && (
             <div className="text-xs text-gray-400 truncate">{listSubtitle}</div>
