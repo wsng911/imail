@@ -72,6 +72,7 @@ export default function App() {
   const [syncing, setSyncing] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
   const [markingAll, setMarkingAll] = useState(false)
+  const [unreadCountdown, setUnreadCountdown] = useState(5)
   const [invalidAccounts, setInvalidAccounts] = useState<{ id: string; email: string }[]>(() => {
     try { return JSON.parse(localStorage.getItem('imail_invalid_accounts') || '[]') } catch { return [] }
   })
@@ -252,19 +253,27 @@ export default function App() {
   // 未读视图 5 秒自动刷新（merge 方式，不覆盖列表）
   useEffect(() => {
     if (selectedAccountId !== VIRTUAL_UNREAD) return
-    const t = setInterval(async () => {
-      const res = await fetch('/api/emails?page=1&folder=unread', { credentials: 'include' })
-      const data = await res.json()
-      if (!Array.isArray(data)) return
-      setEmails(prev => {
-        const existingIds = new Set(prev.map(e => e.id))
-        const fresh = data.map(mapEmail).filter(e => !existingIds.has(e.id))
-        // 同时移除已被标为已读的邮件
-        const stillUnread = prev.filter(e => data.some((d: any) => d.id === e.id))
-        return fresh.length > 0 ? [...fresh, ...stillUnread] : stillUnread
+    setUnreadCountdown(5)
+    const tick = setInterval(async () => {
+      setUnreadCountdown(prev => {
+        if (prev <= 1) {
+          // 触发刷新
+          fetch('/api/emails?page=1&folder=unread', { credentials: 'include' })
+            .then(r => r.json()).then(data => {
+              if (!Array.isArray(data)) return
+              setEmails(prev => {
+                const existingIds = new Set(prev.map(e => e.id))
+                const fresh = data.map(mapEmail).filter(e => !existingIds.has(e.id))
+                const stillUnread = prev.filter(e => data.some((d: any) => d.id === e.id))
+                return fresh.length > 0 ? [...fresh, ...stillUnread] : stillUnread
+              })
+            })
+          return 5
+        }
+        return prev - 1
       })
-    }, 5000)
-    return () => clearInterval(t)
+    }, 1000)
+    return () => clearInterval(tick)
   }, [selectedAccountId])
   useEffect(() => { localStorage.setItem(LS.SELECTED_ACCOUNT, selectedAccountId ?? ALL_INBOXES) }, [selectedAccountId])
   useEffect(() => {
@@ -477,8 +486,20 @@ export default function App() {
           <Menu size={22} className="text-gray-700" />
         </button>
         <div className="flex-1 min-w-0 cursor-pointer" onClick={() => handleSyncCurrent()}>
-          <div className="text-sm font-semibold text-gray-900 truncate">
+          <div className="text-sm font-semibold text-gray-900 truncate flex items-center gap-1.5">
             {selectMode ? `已选 ${selectedIds.size} 封` : listTitle}
+            {!selectMode && selectedAccountId === VIRTUAL_UNREAD && (() => {
+              const TOTAL = 5, r = 7, c = 2 * Math.PI * r
+              const offset = c * (unreadCountdown / TOTAL)
+              return (
+                <svg width="18" height="18" className="-rotate-90 flex-shrink-0">
+                  <circle cx="9" cy="9" r={r} fill="none" stroke="#e5e7eb" strokeWidth="2" />
+                  <circle cx="9" cy="9" r={r} fill="none" stroke="#3b82f6" strokeWidth="2"
+                    strokeDasharray={c} strokeDashoffset={offset}
+                    style={{ transition: 'stroke-dashoffset 1s linear' }} />
+                </svg>
+              )
+            })()}
           </div>
           {!selectMode && listSubtitle && (
             <div className="text-xs text-gray-400 truncate">{listSubtitle}</div>
