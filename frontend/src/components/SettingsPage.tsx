@@ -181,7 +181,6 @@ export default function SettingsPage({ accounts, onBack, onAddAccount, onDeleteA
                 <AccLogo type={acc.type} email={acc.email} />
                 <div className="flex-1 min-w-0">
                   <div className="text-[1em] font-medium text-gray-800 truncate">{acc.email}</div>
-                  <div className="text-[0.85em] text-gray-400 truncate">{acc.type}</div>
                 </div>
                 <button
                   onClick={() => { if (confirm(`删除账号 ${acc.email}？`)) onDeleteAccount(acc.id) }}
