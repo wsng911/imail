@@ -238,20 +238,28 @@ export default function Drawer({ accounts, selectedAccountId, onSelectAccount, o
             <div className="mx-3 mt-3 mb-1 px-3 py-2 bg-gray-50 border border-gray-100 rounded-lg text-[0.7em]">
               {stats && (
                 <div className="mb-2 pb-2 border-b border-gray-100">
-                  <div className="text-gray-500 mb-1">本地邮件</div>
-                  <div className="grid grid-cols-2 gap-x-2 gap-y-0.5 text-gray-500">
-                    <span>未读 <span className="text-blue-500 font-medium">{stats.unread}</span></span>
-                    <span>星标 <span className="text-yellow-500 font-medium">{stats.starred}</span></span>
-                    {(() => {
-                      const fmt = (ts: number) => { const d = new Date(ts); return `${String(d.getFullYear()).slice(2)}${String(d.getMonth()+1).padStart(2,'0')}` }
-                      const cutoff = fmt(stats.cutoffDate)
-                      const oldest = stats.oldestDate ? fmt(stats.oldestDate) : '?'
-                      return (<>
-                        <span title="已下载完整正文，可离线阅读">含正文 <span className="text-green-600 font-medium">{stats.withBody}</span> <span className="text-gray-300">({cutoff}~今)</span></span>
-                        <span title="仅标题和预览，正文需联网拉取">仅预览 <span className="text-gray-400 font-medium">{stats.listOnly}</span> <span className="text-gray-300">({oldest}~{cutoff})</span></span>
-                      </>)
-                    })()}
+                  <div className="text-gray-500 mb-1">邮件缓存</div>
+                  <div className="flex justify-between text-gray-500">
+                    <span>未读</span><span className="text-blue-500 font-medium">{stats.unread}</span>
                   </div>
+                  <div className="flex justify-between text-gray-500">
+                    <span>星标</span><span className="text-yellow-500 font-medium">{stats.starred}</span>
+                  </div>
+                  {(() => {
+                    const fmt = (ts: number) => { const d = new Date(ts); return `${String(d.getFullYear()).slice(2)}${String(d.getMonth()+1).padStart(2,'0')}` }
+                    const cutoff = fmt(stats.cutoffDate)
+                    const oldest = stats.oldestDate ? fmt(stats.oldestDate) : '?'
+                    return (<>
+                      <div className="flex justify-between text-gray-500" title="已下载完整正文，可离线阅读">
+                        <span>含正文 <span className="text-gray-300">({cutoff}~今)</span></span>
+                        <span className="text-green-600 font-medium">{stats.withBody}</span>
+                      </div>
+                      <div className="flex justify-between text-gray-500" title="仅标题和预览，正文需联网拉取">
+                        <span>仅预览 <span className="text-gray-300">({oldest}~{cutoff})</span></span>
+                        <span className="text-gray-400 font-medium">{stats.listOnly}</span>
+                      </div>
+                    </>)
+                  })()}
                 </div>
               )}
               <div className="flex items-center justify-between text-gray-500 mb-1">
