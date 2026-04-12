@@ -11,27 +11,28 @@ const COLORS = ['#4A90D9','#E91E8C','#FF7043','#8BC34A','#9C27B0','#26A69A','#FF
 router.get('/status', async (req, res) => {
   const accounts = accountsDb.prepare('SELECT id, email, type, config FROM accounts').all()
   const IMAP_CONFIG = { gmail: { host: 'imap.gmail.com', port: 993, tls: true }, qq: { host: 'imap.qq.com', port: 993, tls: true } }
-  const results = await Promise.all(accounts.map(async acc => {
+  const results = []
+  for (const acc of accounts) {
     try {
       if (acc.type === 'outlook') {
         await getAccessToken(acc.id)
-        return { id: acc.id, email: acc.email, type: acc.type, valid: true }
+        results.push({ id: acc.id, email: acc.email, type: acc.type, valid: true })
       } else {
         const config = JSON.parse(acc.config)
         const imapCfg = IMAP_CONFIG[acc.type]
-        if (!imapCfg) return { id: acc.id, email: acc.email, type: acc.type, valid: true }
+        if (!imapCfg) { results.push({ id: acc.id, email: acc.email, type: acc.type, valid: true }); continue }
         await new Promise((resolve, reject) => {
-          const imap = new Imap({ user: acc.email, password: config.credential, ...imapCfg, tlsOptions: { rejectUnauthorized: false }, connTimeout: 8000, authTimeout: 6000 })
+          const imap = new Imap({ user: acc.email, password: config.credential, ...imapCfg, tlsOptions: { rejectUnauthorized: false }, connTimeout: 15000, authTimeout: 12000 })
           imap.once('ready', () => { imap.end(); resolve() })
           imap.once('error', reject)
           imap.connect()
         })
-        return { id: acc.id, email: acc.email, type: acc.type, valid: true }
+        results.push({ id: acc.id, email: acc.email, type: acc.type, valid: true })
       }
     } catch {
-      return { id: acc.id, email: acc.email, type: acc.type, valid: false }
+      results.push({ id: acc.id, email: acc.email, type: acc.type, valid: false })
     }
-  }))
+  }
   res.json(results)
 })
 
