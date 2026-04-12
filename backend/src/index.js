@@ -108,8 +108,10 @@ app.get('/api/emails/oauth/outlook/callback', async (req, res) => {
       accountId = randomUUID()
       accountsDb.prepare('INSERT INTO accounts (id, email, type, color, config) VALUES (?, ?, ?, ?, ?)')
         .run(accountId, email, 'outlook', COLORS[count % COLORS.length], JSON.stringify({ refreshToken: result.result.account.homeAccountId || '' }))
+      console.log(`[oauth] new account: ${email}`)
     } else {
       accountId = existing.id
+      console.log(`[oauth] re-auth: ${email}`)
     }
     const fs = require('fs')
     const accountPath = require('path').join(DATA_DIR, `msal_${email}.json`)
@@ -207,6 +209,7 @@ async function autoSync() {
   const accountsDb = require('./accountsDb')
   const { fetchEmails } = require('./imap')
   const { getAccessToken } = require('./outlook')
+  const start = Date.now()
   const nodeFetch = (await import('node-fetch')).default
   const { randomUUID } = require('crypto')
   const accounts = accountsDb.prepare('SELECT * FROM accounts').all()
@@ -253,6 +256,7 @@ async function autoSync() {
   }
 
   await Promise.all(accounts.map(syncOne))
+  console.log(`[sync] auto done in ${((Date.now()-start)/1000).toFixed(1)}s`)
 }
 
 app.listen(PORT, () => {

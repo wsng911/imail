@@ -33,6 +33,9 @@ router.get('/status', async (req, res) => {
       results.push({ id: acc.id, email: acc.email, type: acc.type, valid: false })
     }
   }
+  const invalid = results.filter(r => !r.valid)
+  if (invalid.length) console.log(`[status] invalid accounts: ${invalid.map(r => r.email).join(', ')}`)
+  else console.log(`[status] all ${results.length} accounts valid`)
   res.json(results)
 })
 
@@ -62,12 +65,15 @@ router.post('/', (req, res) => {
   const color = COLORS[count % COLORS.length]
   accountsDb.prepare('INSERT INTO accounts (id, email, type, color, config) VALUES (?, ?, ?, ?, ?)')
     .run(id, email, type, color, JSON.stringify({ credential }))
+  console.log(`[account] added ${email} (${type})`)
   res.status(201).json({ id, email, type, color, unread: 0 })
 })
 
 router.delete('/:id', (req, res) => {
+  const acc = accountsDb.prepare('SELECT email FROM accounts WHERE id = ?').get(req.params.id)
   db.prepare('DELETE FROM emails WHERE account_id = ?').run(req.params.id)
   accountsDb.prepare('DELETE FROM accounts WHERE id = ?').run(req.params.id)
+  console.log(`[account] deleted ${acc?.email || req.params.id}`)
   res.json({ ok: true })
 })
 

@@ -207,7 +207,7 @@ router.get('/fetch-older', async (req, res) => {
 router.post('/sync/:accountId', async (req, res) => {
   const account = accountsDb.prepare('SELECT * FROM accounts WHERE id = ?').get(req.params.accountId)
   if (!account) return res.status(404).json({ error: 'account not found' })
-
+  console.log(`[sync] manual start: ${account.email}`)
   const config = JSON.parse(account.config)
 
   if (account.type === 'outlook') {
