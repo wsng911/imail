@@ -250,4 +250,66 @@ function fetchBodyByUid(account, config, uid, folder) {
   })
 }
 
-module.exports = { fetchEmails, fetchOlderEmails, fetchBodyByUid }
+// ── IDLE 长连接管理器 ─────────────────────────────────────
+const idleConnections = new Map() // accountId → { imap, timer }
+
+function startIdleWatch(account, config) {
+  if (idleConnections.has(account.id)) return // 已在运行
+  const imapCfg = IMAP_CONFIG[account.type]
+  if (!imapCfg) return
+
+  const imap = new Imap({
+    user: account.email,
+    password: config.credential,
+    ...imapCfg,
+    tlsOptions: { rejectUnauthorized: false },
+    connTimeout: 30000,
+    authTimeout: 15000,
+    keepalive: { interval: 10000, idleInterval: 300000, forceNoop: true },
+  })
+
+  let reconnectTimer = null
+
+  const scheduleReconnect = () => {
+    if (!idleConnections.has(account.id)) return // 已被 stop
+    reconnectTimer = setTimeout(() => {
+      idleConnections.delete(account.id) // 清除旧 entry，允许重连
+      startIdleWatch(account, config)
+    }, 30000)
+    idleConnections.set(account.id, { imap, reconnectTimer }) // 更新 timer 引用
+  }
+
+  imap.once('ready', () => {
+    imap.openBox('INBOX', false, (err) => {
+      if (err) { imap.end(); return scheduleReconnect() }
+      console.log(`[idle] ${account.email} watching INBOX`)
+      imap.on('mail', () => {
+        console.log(`[idle] ${account.email} new mail, fetching...`)
+        fetchEmails(account, config).catch(() => {})
+      })
+    })
+  })
+
+  imap.once('error', (e) => {
+    console.log(`[idle] ${account.email} error: ${e.message}`)
+    scheduleReconnect()
+  })
+
+  imap.once('end', () => {
+    console.log(`[idle] ${account.email} connection ended`)
+    scheduleReconnect()
+  })
+
+  imap.connect()
+  idleConnections.set(account.id, { imap, reconnectTimer })
+}
+
+function stopIdleWatch(accountId) {
+  const entry = idleConnections.get(accountId)
+  if (!entry) return
+  idleConnections.delete(accountId)
+  clearTimeout(entry.reconnectTimer)
+  try { entry.imap.end() } catch {}
+}
+
+module.exports = { fetchEmails, fetchOlderEmails, fetchBodyByUid, startIdleWatch, stopIdleWatch }

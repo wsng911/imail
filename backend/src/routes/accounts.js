@@ -66,11 +66,19 @@ router.post('/', (req, res) => {
   accountsDb.prepare('INSERT INTO accounts (id, email, type, color, config) VALUES (?, ?, ?, ?, ?)')
     .run(id, email, type, color, JSON.stringify({ credential }))
   console.log(`[account] added ${email} (${type})`)
+  if (type !== 'outlook') {
+    const { startIdleWatch } = require('../imap')
+    startIdleWatch({ id, email, type }, { credential })
+  }
   res.status(201).json({ id, email, type, color, unread: 0 })
 })
 
 router.delete('/:id', (req, res) => {
-  const acc = accountsDb.prepare('SELECT email FROM accounts WHERE id = ?').get(req.params.id)
+  const acc = accountsDb.prepare('SELECT email, type FROM accounts WHERE id = ?').get(req.params.id)
+  if (acc?.type !== 'outlook') {
+    const { stopIdleWatch } = require('../imap')
+    stopIdleWatch(req.params.id)
+  }
   db.prepare('DELETE FROM emails WHERE account_id = ?').run(req.params.id)
   accountsDb.prepare('DELETE FROM accounts WHERE id = ?').run(req.params.id)
   console.log(`[account] deleted ${acc?.email || req.params.id}`)

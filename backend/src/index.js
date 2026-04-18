@@ -250,7 +250,7 @@ async function autoSync() {
         console.log(`[sync] ${account.email} synced ${newCount}`)
         await fetchEmails(account, config)
       } else {
-        await fetchEmails(account, config)
+        // IMAP 账号由 IDLE 长连接覆盖，autoSync 跳过
       }
     } catch {}
   }
@@ -266,4 +266,14 @@ app.listen(PORT, () => {
   setInterval(markOldEmailsRead, 24 * 60 * 60 * 1000)
   setInterval(purgeOldEmails, 24 * 60 * 60 * 1000)
   setInterval(autoSync, 60 * 1000)
+
+  // 为所有 IMAP 账号启动 IDLE 长连接
+  const { startIdleWatch } = require('./imap')
+  const imapAccounts = accountsDb.prepare("SELECT * FROM accounts WHERE type != 'outlook'").all()
+  for (const account of imapAccounts) {
+    try {
+      const config = JSON.parse(account.config)
+      startIdleWatch(account, config)
+    } catch {}
+  }
 })

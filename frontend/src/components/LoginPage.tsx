@@ -42,7 +42,7 @@ export default function LoginPage({ onLogin }: Props) {
           <div className="w-14 h-14 bg-blue-600 rounded-2xl flex items-center justify-center mb-4">
             <Mail size={28} className="text-white" />
           </div>
-          <h1 className="text-xl font-bold text-gray-900">iMall</h1>
+          <h1 className="text-xl font-bold text-gray-900">iMail</h1>
           <p className="text-sm text-gray-500 mt-1">请登录以继续</p>
         </div>
 
