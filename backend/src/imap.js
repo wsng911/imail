@@ -7,11 +7,27 @@ const { randomUUID } = require('crypto')
 const IMAP_CONFIG = {
   gmail: { host: 'imap.gmail.com', port: 993, tls: true },
   qq:    { host: 'imap.qq.com',    port: 993, tls: true },
+  163:   { host: 'imap.163.com',   port: 993, tls: true },
+  126:   { host: 'imap.126.com',   port: 993, tls: true },
+  yeah:  { host: 'imap.yeah.net',  port: 993, tls: true },
+  189:   { host: 'imap.189.cn',    port: 993, tls: true },
+  sina:  { host: 'imap.sina.com',  port: 993, tls: true },
+  139:   { host: 'imap.139.com',   port: 993, tls: true },
+  sohu:  { host: 'imap.sohu.com',  port: 993, tls: true },
+  aliyun:  { host: 'imap.aliyun.com',  port: 993, tls: true },
 }
 
 const FOLDER_MAP = {
   gmail:   { inbox: 'INBOX', sent: '[Gmail]/已发邮件', draft: '[Gmail]/草稿', trash: '[Gmail]/已删除邮件', spam: '[Gmail]/垃圾邮件' },
   qq:      { inbox: 'INBOX', sent: 'Sent Messages',   draft: 'Drafts',       trash: 'Deleted Messages', spam: 'Junk' },
+  163:     { inbox: 'INBOX', sent: 'Sent Messages',   draft: 'Drafts',       trash: 'Deleted Messages', spam: 'Junk' },
+  126:     { inbox: 'INBOX', sent: 'Sent Messages',   draft: 'Drafts',       trash: 'Deleted Messages', spam: 'Junk' },
+  yeah:    { inbox: 'INBOX', sent: 'Sent Messages',   draft: 'Drafts',       trash: 'Deleted Messages', spam: 'Junk' },
+  189:     { inbox: 'INBOX', sent: 'Sent Messages',   draft: 'Drafts',       trash: 'Deleted Messages', spam: 'Junk' },
+  sina:    { inbox: 'INBOX', sent: 'Sent Messages',   draft: 'Drafts',       trash: 'Deleted Messages', spam: 'Junk' },
+  139:     { inbox: 'INBOX', sent: 'Sent Messages',   draft: 'Drafts',       trash: 'Deleted Messages', spam: 'Junk' },
+  sohu:    { inbox: 'INBOX', sent: 'Sent Messages',   draft: 'Drafts',       trash: 'Deleted Messages', spam: 'Junk' },
+  aliyun:  { inbox: 'INBOX', sent: 'Sent Messages',   draft: 'Drafts',       trash: 'Deleted Messages', spam: 'Junk' },
 }
 
 // QQ 邮箱文件夹名备选（不同版本可能不同）

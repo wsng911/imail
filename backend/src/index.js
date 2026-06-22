@@ -3,6 +3,24 @@ const express = require('express')
 const session = require('express-session')
 const cfg = require('./config')
 
+// ── Cloudflare Access JWT verification ───────────────────
+const CF_TEAM_DOMAIN = process.env.CF_TEAM_DOMAIN  // e.g. yourteam.cloudflareaccess.com
+const CF_AUD = process.env.CF_AUD                  // Application Audience Tag
+
+let _cfJWKS = null
+async function verifyCFAccess(req, res, next) {
+  if (!CF_TEAM_DOMAIN) return next()  // 本地开发跳过
+  const token = req.headers['cf-access-jwt-assertion']
+  if (!token) return next()  // 无 CF token，交给 session 处理
+  try {
+    const { createRemoteJWKSet, jwtVerify } = await import('jose')
+    if (!_cfJWKS) _cfJWKS = createRemoteJWKSet(new URL(`https://${CF_TEAM_DOMAIN}/cdn-cgi/access/certs`))
+    const { payload } = await jwtVerify(token, _cfJWKS, { audience: CF_AUD })
+    req.cfUser = payload
+  } catch {}
+  next()
+}
+
 const app = express()
 app.set('trust proxy', 1)  // 信任 Nginx 反代的 X-Forwarded-Proto
 app.use(express.json())
@@ -25,11 +43,13 @@ fs.mkdirSync(path.join(DATA_DIR, 'sessions'), { recursive: true })
 
 app.use(session({
   store: new FileStore({ path: path.join(DATA_DIR, 'sessions'), retries: 1, logFn: () => {} }),
-  secret: 'imall-secret-key',
+  secret: 'imail-secret-key',
   resave: false,
   saveUninitialized: false,
   cookie: { httpOnly: true, maxAge: 7 * 24 * 60 * 60 * 1000 },
 }))
+
+app.use(verifyCFAccess)
 
 // ── Auth routes (public) ──────────────────────────────────
 app.post('/api/auth/login', (req, res) => {
@@ -47,6 +67,7 @@ app.post('/api/auth/logout', (req, res) => {
 })
 
 app.get('/api/auth/me', (req, res) => {
+  if (req.cfUser) return res.json({ authenticated: true, email: req.cfUser.email })
   res.json({ authenticated: !!req.session.authenticated })
 })
 
@@ -72,7 +93,8 @@ app.post('/api/auth/change-password', (req, res) => {
 
 // ── Auth middleware ───────────────────────────────────────
 function requireAuth(req, res, next) {
-  if (req.session.authenticated) return next()
+  if (req.cfUser) return next()           // CF Access 已验证
+  if (req.session.authenticated) return next()  // 密码登录（本地/fallback）
   res.status(401).json({ error: 'unauthorized' })
 }
 
@@ -260,7 +282,7 @@ async function autoSync() {
 }
 
 app.listen(PORT, () => {
-  console.log(`iMall backend running on :${PORT}`)
+  console.log(`iMail backend running on :${PORT}`)
   markOldEmailsRead()
   purgeOldEmails()
   setInterval(markOldEmailsRead, 24 * 60 * 60 * 1000)

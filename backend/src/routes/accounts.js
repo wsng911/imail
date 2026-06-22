@@ -10,7 +10,7 @@ const COLORS = ['#4A90D9','#E91E8C','#FF7043','#8BC34A','#9C27B0','#26A69A','#FF
 
 router.get('/status', async (req, res) => {
   const accounts = accountsDb.prepare('SELECT id, email, type, config FROM accounts').all()
-  const IMAP_CONFIG = { gmail: { host: 'imap.gmail.com', port: 993, tls: true }, qq: { host: 'imap.qq.com', port: 993, tls: true } }
+  const IMAP_CONFIG = { gmail: { host: 'imap.gmail.com', port: 993, tls: true }, qq: { host: 'imap.qq.com', port: 993, tls: true }, 163: { host: 'imap.163.com', port: 993, tls: true }, 126: { host: 'imap.126.com', port: 993, tls: true }, yeah: { host: 'imap.yeah.net', port: 993, tls: true }, 189: { host: 'imap.189.cn', port: 993, tls: true }, sina: { host: 'imap.sina.com', port: 993, tls: true }, 139: { host: 'imap.139.com', port: 993, tls: true }, sohu: { host: 'imap.sohu.com', port: 993, tls: true }, aliyun: { host: 'imap.aliyun.com', port: 993, tls: true }, foxmail: { host: 'imap.qq.com', port: 993, tls: true } }
   const results = []
   for (const acc of accounts) {
     try {
@@ -21,8 +21,11 @@ router.get('/status', async (req, res) => {
         const config = JSON.parse(acc.config)
         const imapCfg = IMAP_CONFIG[acc.type]
         if (!imapCfg) { results.push({ id: acc.id, email: acc.email, type: acc.type, valid: true }); continue }
+        // Others Mail 类型跳过校验
+        const CN_TYPES = ['163','126','yeah','189','sina','139','sohu','aliyun']
+        if (CN_TYPES.includes(acc.type)) { results.push({ id: acc.id, email: acc.email, type: acc.type, valid: true }); continue }
         await new Promise((resolve, reject) => {
-          const imap = new Imap({ user: acc.email, password: config.credential, ...imapCfg, tlsOptions: { rejectUnauthorized: false }, connTimeout: 15000, authTimeout: 12000 })
+          const imap = new Imap({ user: acc.email, password: config.credential, ...imapCfg, tlsOptions: { rejectUnauthorized: false }, connTimeout: 30000, authTimeout: 30000 })
           imap.once('ready', () => { imap.end(); resolve() })
           imap.once('error', reject)
           imap.connect()

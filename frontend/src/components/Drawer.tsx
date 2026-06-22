@@ -24,7 +24,15 @@ const FOLDERS = [
   { key: 'trash',  label: '已删除',  icon: Trash2 },
 ]
 
-const TYPE_LABELS: Record<string, string> = { gmail: 'Gmail', outlook: 'Outlook', qq: 'QQ 邮箱' }
+const TYPE_LABELS: Record<string, string> = { gmail: 'Gmail', outlook: 'Outlook', qq: 'QQ 邮箱', other: 'Others Mail' }
+
+const CN_TYPES = ['163', '126', 'yeah', '189', 'sina', '139', 'sohu', 'aliyun']
+
+const CN_DOMAIN_ORDER: Record<string, number> = {
+  '163.com': 0, '126.com': 1, 'yeah.net': 2,
+  '189.cn': 3, 'sina.com': 4, 'sina.cn': 5,
+  '139.com': 6, 'sohu.com': 7, 'aliyun.com': 8,
+}
 
 function ProviderLogo({ type, email, size = 6 }: { type: string, email?: string, size?: number }) {
   const domain = email?.toLowerCase().split('@')[1] || ''
@@ -32,17 +40,27 @@ function ProviderLogo({ type, email, size = 6 }: { type: string, email?: string,
   const isLive = domain.startsWith('live.')
   const isOnMicrosoft = domain.endsWith('onmicrosoft.com')
 
+  const LOGO_MAP: Record<string, string> = {
+    gmail: '/gmail.png', outlook: '/outlook.png', qq: '/qq.png',
+    '163': '/163.png', '126': '/126.png', yeah: '/yeah.png',
+    '189': '/189.png', sina: '/sina.png',
+  }
+  const LABEL_MAP: Record<string, string> = { '139': '139', sohu: '狐', aliyun: '云' }
+  const COLOR_MAP: Record<string, string> = { '139': '#00B050', sohu: '#E50B0B', aliyun: '#FF6A00' }
+
   const src = isOnMicrosoft ? '/onmicrosoft.png'
     : isLive ? '/live.png'
     : isHotmail ? '/hotmail.png'
-    : type === 'gmail' ? '/gmail.png'
-    : type === 'outlook' ? '/outlook.png'
-    : type === 'qq' ? '/qq.png'
-    : null
+    : LOGO_MAP[type] ?? null
 
   const px = size * 4
-  if (!src) return <div style={{ width: px, height: px }} className="rounded-lg bg-gray-200 flex-shrink-0" />
-  return <img src={src} alt={type} style={{ width: px, height: px }} className="object-contain flex-shrink-0" />
+  if (src) return <img src={src} alt={type} style={{ width: px, height: px }} className="object-contain flex-shrink-0" />
+  if (LABEL_MAP[type]) return (
+    <div style={{ width: px, height: px, background: COLOR_MAP[type] }} className="rounded text-white text-[8px] font-bold flex items-center justify-center flex-shrink-0">
+      {LABEL_MAP[type]}
+    </div>
+  )
+  return <div style={{ width: px, height: px }} className="rounded-lg bg-gray-200 flex-shrink-0" />
 }
 
 function shortEmail(email: string) { return email.split('@')[0] }
@@ -95,6 +113,7 @@ export default function Drawer({ accounts, selectedAccountId, onSelectAccount, o
   const isVirtual = selectedAccountId === ALL_INBOXES || selectedAccountId === VIRTUAL_UNREAD || selectedAccountId === VIRTUAL_STARRED
   const [allOpen, setAllOpen] = useState(isVirtual)
   const types = (['gmail', 'outlook', 'qq'] as const).filter(t => accounts.some(a => a.type === t))
+  const hasOther = accounts.some(a => CN_TYPES.includes(a.type))
   const totalUnread = accounts.reduce((s, a) => s + a.unread, 0)
 
   return (
@@ -113,7 +132,7 @@ export default function Drawer({ accounts, selectedAccountId, onSelectAccount, o
             : view.level === 'accounts' ? TYPE_LABELS[view.type]
             : shortEmail(view.account.email)}
         </span>
-        {view.level === 'root' && <span className="text-[0.7em] text-gray-300">v5.2.0</span>}
+        {view.level === 'root' && <span className="text-[0.7em] text-gray-300">v5.3.1</span>}
       </div>
 
       <div className="flex-1 overflow-y-auto">
@@ -174,15 +193,33 @@ export default function Drawer({ accounts, selectedAccountId, onSelectAccount, o
                 </button>
               )
             })}
+            {hasOther && (
+              <button onClick={() => setView({ level: 'accounts', type: 'other' })}
+                className="w-full flex items-center gap-3 px-4 py-3 transition-colors hover:brightness-95"
+                style={{ backgroundColor: 'rgba(99,102,241,0.08)' }}>
+                <div className="w-6 h-6 flex items-center justify-center flex-shrink-0">
+                  <img src="/other.png" alt="其他" className="w-6 h-6 object-contain" />
+                </div>
+                <span className="flex-1 text-left text-[0.9em] font-medium text-indigo-600">{TYPE_LABELS.other}</span>
+                <ChevronRight size={16} className="text-gray-400" />
+              </button>
+            )}
           </>
         )}
 
         {/* Accounts under a type */}
-        {view.level === 'accounts' && [...accounts].filter(a => a.type === view.type).sort((a, b) => {
+        {view.level === 'accounts' && [...accounts].filter(a => view.type === 'other' ? CN_TYPES.includes(a.type) : a.type === view.type).sort((a, b) => {
           if (view.type === 'outlook') {
             const domainOrder = (e: string) => { const d = e.split('@')[1]?.toLowerCase() || ''; return d.startsWith('outlook.') ? 0 : d.startsWith('hotmail.') ? 1 : d.startsWith('live.') ? 2 : 3 }
             const dd = domainOrder(a.email) - domainOrder(b.email)
             return dd !== 0 ? dd : a.email.localeCompare(b.email)
+          }
+          if (view.type === 'other') {
+            const dA = a.email.split('@')[1]?.toLowerCase() || ''
+            const dB = b.email.split('@')[1]?.toLowerCase() || ''
+            const oA = CN_DOMAIN_ORDER[dA] ?? 99
+            const oB = CN_DOMAIN_ORDER[dB] ?? 99
+            return oA !== oB ? oA - oB : a.email.localeCompare(b.email)
           }
           return a.email.localeCompare(b.email)
         }).map(acc => {
@@ -202,7 +239,7 @@ export default function Drawer({ accounts, selectedAccountId, onSelectAccount, o
 
         {/* Folders under an account */}
         {view.level === 'folders' && (() => {
-          const baseColor = { gmail: '234,67,53', outlook: '0,120,212', qq: '18,183,245' }[view.account.type] || '99,102,241'
+          const baseColor = ({ gmail: '234,67,53', outlook: '0,120,212', qq: '18,183,245' } as Record<string,string>)[view.account.type] || '99,102,241'
           return FOLDERS.map((f, i) => {
             const folderId = `${view.account.id}::${f.key}`
             const isSelected = selectedAccountId === folderId

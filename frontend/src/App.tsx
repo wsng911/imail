@@ -263,7 +263,7 @@ export default function App() {
             return fresh.length > 0 ? [...fresh, ...prev] : prev
           })
         })
-    }, 5000)
+    }, 30000)
     return () => clearInterval(tick)
   }, [selectedAccountId])
   useEffect(() => { localStorage.setItem(LS.SELECTED_ACCOUNT, selectedAccountId ?? ALL_INBOXES) }, [selectedAccountId])

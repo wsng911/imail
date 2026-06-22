@@ -60,6 +60,7 @@ export default function EmailDetail({ email, account, onBack, onDelete, onStar, 
     if (iframeRef.current) iframeRef.current.style.height = '300px'
     const msgId = email.id
     const handler = (e: MessageEvent) => {
+      if (e.origin !== 'null' && e.origin !== window.location.origin) return
       if (e.data?.iframeHeight && e.data?.emailId === msgId && iframeRef.current)
         iframeRef.current.style.height = e.data.iframeHeight + 'px'
     }
@@ -157,7 +158,7 @@ export default function EmailDetail({ email, account, onBack, onDelete, onStar, 
               new ResizeObserver(function(){clearTimeout(window._rt);window._rt=setTimeout(report,100)}).observe(document.documentElement)
               window.addEventListener('load',function(){setTimeout(report,300);setTimeout(report,1000)})
             <\/script>`}
-            sandbox="allow-popups allow-scripts allow-same-origin"
+            sandbox="allow-popups allow-scripts"
             className="w-full border-0 overflow-x-auto"
             style={{ minHeight: 300 }}
           />

@@ -1,8 +1,62 @@
-import { useRef, useState } from 'react'
+import { memo, useRef, useState } from 'react'
 import { Star, Trash2, Mail, MailOpen, Paperclip } from 'lucide-react'
 import type { Email, Account } from '../types'
 import { getInitials } from '../data'
 import Avatar from './Avatar'
+
+const CTX_KEYWORDS = /验证码|动态码|校验码|确认码|激活码|verification\s*code|security\s*code|login\s*code|access\s*code|one.time|passcode|auth\s*code|sign.in\s*code|your\s*code|\bOTP\b/i
+const TRANSACTION_KEYWORDS = /transaction|payment|order|invoice|receipt|转账|账单|订单|付款/i
+const YEAR_RE = /^(19|20)\d{2}/
+const ALL_SAME_RE = /^(.)\1+$/
+
+function extractCode(text: string): string | null {
+  if (!text) return null
+  const lines = text.split('\n')
+
+  // 第一层：关键词同行，紧跟 4-8 位字母数字（必须含数字）
+  for (const line of lines) {
+    if (!CTX_KEYWORDS.test(line)) continue
+    const candidates = line.match(/\b([A-Z0-9]{4,8})\b/gi) || []
+    for (const c of candidates) {
+      if (!/\d/.test(c)) continue
+      if (YEAR_RE.test(c) && /^\d+$/.test(c)) continue
+      if (ALL_SAME_RE.test(c)) continue
+      return c
+    }
+  }
+
+  // 第二层：关键词后多行扫描（最多5行）
+  for (let i = 0; i < lines.length; i++) {
+    if (!CTX_KEYWORDS.test(lines[i])) continue
+    for (let j = i + 1; j <= Math.min(i + 5, lines.length - 1); j++) {
+      const candidates = lines[j].match(/\b([A-Z0-9]{4,8})\b/gi) || []
+      for (const c of candidates) {
+        if (!/\d/.test(c)) continue
+        if (YEAR_RE.test(c) && /^\d+$/.test(c)) continue
+        if (ALL_SAME_RE.test(c)) continue
+        return c
+      }
+    }
+  }
+
+  // 第三层：XXXX-XXXX 字母数字混合格式（排除纯数字/纯字母）
+  const hyphenMatch = text.match(/\b([A-Z0-9]{4,8}-[A-Z0-9]{4,8})\b/i)
+  if (hyphenMatch) {
+    const v = hyphenMatch[1]
+    if (/[A-Z]/i.test(v) && /\d/.test(v)) return v
+  }
+
+  // 第四层：纯6位数字降级（需有关键词上下文，排除交易类/年份/全同）
+  if (CTX_KEYWORDS.test(text) && !TRANSACTION_KEYWORDS.test(text)) {
+    const m6 = text.match(/\b(\d{6})\b/)
+    if (m6) {
+      const v = m6[1]
+      if (!YEAR_RE.test(v) && !ALL_SAME_RE.test(v)) return v
+    }
+  }
+
+  return null
+}
 
 function formatDate(raw: string): string {
   if (!raw) return ''
@@ -28,7 +82,7 @@ interface Props {
   onToggleSelect: () => void
 }
 
-export default function EmailItem({
+export default memo(function EmailItem({
   email, account, onClick, onStar, onDelete, onToggleRead,
   selectMode, selected, onLongPress, onToggleSelect,
 }: Props) {
@@ -122,7 +176,7 @@ export default function EmailItem({
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-1 min-w-0">
               {!email.read && <span className="w-1 h-1 rounded-full bg-blue-500 flex-shrink-0" />}
-              {!email.read && (() => { const m = (email.preview || '').match(/\b(\d{4,8})\b/); return m ? <span className="text-[0.8em] font-bold text-gray-900 flex-shrink-0">【{m[1]}】</span> : null })()}
+              {!email.read && (() => { const code = extractCode(`${email.subject}\n${email.preview || ''}`); return code ? <span className="text-[0.8em] font-bold text-gray-900 flex-shrink-0">【{code}】</span> : null })()}
               <span className={`truncate text-[0.8em] ${!email.read ? 'font-semibold text-gray-900' : 'text-gray-600'}`}>
                 {email.subject}
               </span>
@@ -164,4 +218,4 @@ export default function EmailItem({
       )}
     </div>
   )
-}
+})

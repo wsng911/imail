@@ -1,4 +1,4 @@
-export type AccountType = 'gmail' | 'outlook' | 'qq'
+export type AccountType = 'gmail' | 'outlook' | 'qq' | '163' | '126' | 'yeah' | '189' | 'sina' | '139' | 'sohu' | 'aliyun'
 
 export type Account = {
   id: string

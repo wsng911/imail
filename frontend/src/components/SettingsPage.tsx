@@ -8,12 +8,27 @@ function AccLogo({ type, email }: { type: string; email: string }) {
   const isHotmail = domain.startsWith('hotmail.')
   const isLive = domain.startsWith('live.')
   const isOnMicrosoft = domain.endsWith('onmicrosoft.com')
+  const LOGO_MAP: Record<string, string> = {
+    gmail: '/gmail.png', outlook: '/outlook.png', qq: '/qq.png',
+    '163': '/163.png', '126': '/126.png', yeah: '/yeah.png',
+    '189': '/189.png', sina: '/sina.png', foxmail: '/foxmail.png',
+  }
+  const LABEL_MAP: Record<string, string> = {
+    '139': '139', sohu: '狐', aliyun: '阿里',
+  }
+  const COLOR_MAP: Record<string, string> = {
+    '139': '#00B050', sohu: '#E50B0B', aliyun: '#FF6A00',
+  }
   const src = isOnMicrosoft ? '/onmicrosoft.png'
     : isLive ? '/live.png' : isHotmail ? '/hotmail.png'
-    : type === 'gmail' ? '/gmail.png' : type === 'outlook' ? '/outlook.png'
-    : type === 'qq' ? '/qq.png' : null
-  if (!src) return <div className="w-5 h-5 rounded bg-gray-200 flex-shrink-0" />
-  return <img src={src} alt={type} className="w-5 h-5 object-contain flex-shrink-0" />
+    : LOGO_MAP[type] ?? null
+  if (src) return <img src={src} alt={type} className="w-5 h-5 object-contain flex-shrink-0" />
+  if (LABEL_MAP[type]) return (
+    <div className="w-5 h-5 rounded text-white text-[8px] font-bold flex items-center justify-center flex-shrink-0" style={{ background: COLOR_MAP[type] }}>
+      {LABEL_MAP[type]}
+    </div>
+  )
+  return <div className="w-5 h-5 rounded bg-gray-200 flex-shrink-0" />
 }
 
 interface Props {

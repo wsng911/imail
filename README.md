@@ -1,6 +1,6 @@
 # iMail
 
-一个自托管的多账号邮件客户端，支持 Gmail、QQ 邮箱、Outlook / Hotmail / Live。
+一个自托管的多账号邮件客户端，支持 Gmail、QQ 邮箱、Outlook / Hotmail / Live 及国内主流邮箱。
 
 by mrlees
 
@@ -9,13 +9,13 @@ by mrlees
 ## 功能
 
 - 统一收件箱，多账号聚合
-- 支持 Gmail / QQ（IMAP）、Outlook / Hotmail / Live（OAuth2）
-- 邮件列表：左滑删除、长按多选、批量操作
+- 支持 Gmail / QQ / 163 / 126 / yeah.net / 189 / 新浪 / 139 / 搜狐 / 阿里云（IMAP）、Outlook / Hotmail / Live（OAuth2）
+- 邮件列表：左滑删除、长按多选、批量操作、验证码高亮识别
 - 邮件详情：HTML 正文渲染、回复、星标、已读/未读
 - 写信：发件人选择、密送、正文
 - 设置：字体大小、主题（浅色/深色）
 - 数据迁移：账号导出/导入
-- 登录保护（用户名 + 密码）
+- 登录保护（用户名 + 密码，支持 Cloudflare Access 无密码登录）
 - Docker 部署，数据持久化
 
 ---
@@ -117,8 +117,34 @@ docker compose up -d --build
 | 类型 | 所需凭证 |
 |------|---------|
 | Gmail | 16 位应用专用密码（需开启两步验证）|
-| QQ 邮箱 | QQ 邮箱授权码（在 QQ 邮箱设置中生成）|
+| QQ 邮箱 / Foxmail | QQ 邮箱授权码（在 QQ 邮箱设置中生成）|
 | Outlook / Hotmail / Live | OAuth2 授权（需在 Azure 注册应用）|
+| 163 / 126 / yeah.net | 网易邮箱授权码（邮箱设置 → POP3/SMTP/IMAP → 开启 → 生成授权码）|
+| 189 邮箱 | 189邮箱授权码（设置 → 客户端授权码）|
+| 新浪邮箱 | 新浪邮箱授权码（设置 → 客户端授权）|
+| 139 / 搜狐 / 阿里云 | 各邮箱授权码（设置中开启 IMAP 并生成）|
+
+---
+
+## Cloudflare Access 登录（可选，替代用户名密码）
+
+使用 Cloudflare Access 后，访问 iMail 将通过邮件验证码登录，无需维护密码。
+
+在 `docker-compose.yml` 的 `environment` 中添加：
+
+```yaml
+environment:
+  - DATA_DIR=/app/data
+  - CF_TEAM_DOMAIN=yourteam.cloudflareaccess.com
+  - CF_AUD=your-application-audience-tag
+```
+
+配置步骤：
+1. Cloudflare Zero Trust → Access → Applications → Add → Self-hosted
+2. 填入域名，策略选 One-time PIN（邮件验证码）
+3. 从应用详情页复制 AUD tag 和 Team Domain 填入上方环境变量
+
+> 未设置 `CF_TEAM_DOMAIN` 时自动回退到用户名/密码登录（本地开发适用）
 
 ---
 
@@ -365,6 +391,15 @@ server {
 ---
 
 ## 更新日志
+
+### v5.3.1
+- 新增 Others Mail 分组：支持 163 / 126 / yeah.net / 189 / 新浪 / 139 / 搜狐 / 阿里云邮箱（IMAP）
+- 左栏账号分组新增 Others Mail 入口，按域名排序
+- 添加账号页面新增 Others Mail 二级选择页
+- 支持 Cloudflare Access 无密码登录（邮件验证码）
+- 修复 iframe sandbox 安全漏洞（防止邮件 JS 访问父页面）
+- 验证码识别升级为多层匹配（关键词同行/跨行/XXXX-XXXX/纯6位降级）
+- 邮件列表加入 React.memo 优化渲染性能
 
 ### v4.10
 - 附件功能：IMAP/Outlook 同步时存储附件，右栏展示附件列表并支持下载
