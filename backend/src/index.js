@@ -232,7 +232,8 @@ async function autoSync() {
   const { fetchEmails } = require('./imap')
   const { getAccessToken } = require('./outlook')
   const start = Date.now()
-  const nodeFetch = (await import('node-fetch')).default
+  if (!autoSync._nodeFetch) autoSync._nodeFetch = (await import('node-fetch')).default
+  const nodeFetch = autoSync._nodeFetch
   const { randomUUID } = require('crypto')
   const accounts = accountsDb.prepare('SELECT * FROM accounts').all()
 
@@ -270,7 +271,7 @@ async function autoSync() {
           }
         }
         console.log(`[sync] ${account.email} synced ${newCount}`)
-        await fetchEmails(account, config)
+        // 不再对 outlook 账号调用 fetchEmails（IMAP 函数，会泄漏连接对象）
       } else {
         // IMAP 账号由 IDLE 长连接覆盖，autoSync 跳过
       }
@@ -281,13 +282,23 @@ async function autoSync() {
   console.log(`[sync] auto done in ${((Date.now()-start)/1000).toFixed(1)}s`)
 }
 
+// 内存超过 1.2GB 自动重启防止泄漏累积
+function checkMemory() {
+  const rss = process.memoryUsage().rss
+  if (rss > 1.2 * 1024 * 1024 * 1024) {
+    console.log(`[memory] RSS ${Math.round(rss/1024/1024)}MB exceeded limit, restarting...`)
+    process.exit(1)  // Docker restart: unless-stopped 会自动重启
+  }
+}
+
 app.listen(PORT, () => {
   console.log(`iMail backend running on :${PORT}`)
   markOldEmailsRead()
   purgeOldEmails()
   setInterval(markOldEmailsRead, 24 * 60 * 60 * 1000)
   setInterval(purgeOldEmails, 24 * 60 * 60 * 1000)
-  setInterval(autoSync, 60 * 1000)
+  setInterval(autoSync, 5 * 60 * 1000)   // 5分钟同步一次，原60秒太频繁
+  setInterval(checkMemory, 60 * 1000)    // 每分钟检查内存
 
   // 为所有 IMAP 账号启动 IDLE 长连接
   const { startIdleWatch } = require('./imap')

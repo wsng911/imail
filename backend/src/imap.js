@@ -269,7 +269,7 @@ function fetchBodyByUid(account, config, uid, folder) {
 // ── IDLE 长连接管理器 ─────────────────────────────────────
 const idleConnections = new Map() // accountId → { imap, timer }
 
-function startIdleWatch(account, config) {
+function startIdleWatch(account, config, initialFailCount = 0) {
   if (idleConnections.has(account.id)) return // 已在运行
   const imapCfg = IMAP_CONFIG[account.type]
   if (!imapCfg) return
@@ -285,19 +285,37 @@ function startIdleWatch(account, config) {
   })
 
   let reconnectTimer = null
+  let failCount = initialFailCount
+  const MAX_FAILS = 5  // 最多重试5次后停止
 
-  const scheduleReconnect = () => {
-    if (!idleConnections.has(account.id)) return // 已被 stop
+  const scheduleReconnect = (errMsg = '') => {
+    if (!idleConnections.has(account.id)) return
+    // 永久性错误直接放弃，不重试
+    if (errMsg.includes('black list') || errMsg.includes('password') || errMsg.includes('incorrect') || errMsg.includes('Account or password')) {
+      console.log(`[idle] ${account.email} permanent error, stopping retry: ${errMsg}`)
+      idleConnections.delete(account.id)
+      return
+    }
+    failCount++
+    if (failCount > MAX_FAILS) {
+      console.log(`[idle] ${account.email} failed ${failCount} times, giving up`)
+      idleConnections.delete(account.id)
+      return
+    }
+    // 指数退避：30s, 60s, 120s, 240s, 480s
+    const delay = Math.min(30000 * Math.pow(2, failCount - 1), 480000)
+    console.log(`[idle] ${account.email} retry ${failCount}/${MAX_FAILS} in ${delay/1000}s`)
     reconnectTimer = setTimeout(() => {
-      idleConnections.delete(account.id) // 清除旧 entry，允许重连
-      startIdleWatch(account, config)
-    }, 30000)
-    idleConnections.set(account.id, { imap, reconnectTimer }) // 更新 timer 引用
+      idleConnections.delete(account.id)
+      startIdleWatch(account, config, failCount)
+    }, delay)
+    idleConnections.set(account.id, { imap, reconnectTimer })
   }
 
   imap.once('ready', () => {
+    failCount = 0  // 连接成功重置失败计数
     imap.openBox('INBOX', false, (err) => {
-      if (err) { imap.end(); return scheduleReconnect() }
+      if (err) { imap.end(); return scheduleReconnect(err.message) }
       console.log(`[idle] ${account.email} watching INBOX`)
       imap.on('mail', () => {
         console.log(`[idle] ${account.email} new mail, fetching...`)
@@ -308,7 +326,7 @@ function startIdleWatch(account, config) {
 
   imap.once('error', (e) => {
     console.log(`[idle] ${account.email} error: ${e.message}`)
-    scheduleReconnect()
+    scheduleReconnect(e.message)
   })
 
   imap.once('end', () => {
