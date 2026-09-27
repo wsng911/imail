@@ -18,7 +18,7 @@
 
    **生产环境（VPS）：**
    ```
-   https://mail.idays.gq/api/emails/oauth/outlook/callback
+   https://mail.idays.eu.org/api/emails/oauth/outlook/callback
    ```
 
    **本地开发：**
